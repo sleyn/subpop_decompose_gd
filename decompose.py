@@ -108,6 +108,42 @@ class ClonalDecomposition:
         f_clon_new = self.f_clon - self.alpha * f_clon_grad
         return f_clon_new
 
+    def collapse_identical(self):
+        # Sum identical subpopulations
+        drop_subpop = list()
+
+        for subpop in range(self.p_clon.shape[1]):
+            for subpop1 in range(subpop + 1, self.p_clon.shape[1]):
+                if np.min(self.p_clon[:, subpop] == self.p_clon[:, subpop1]):
+                    self.f_clon[subpop, :] += self.f_clon[subpop1, :]
+                    self.f_clon[subpop1, :] = 0
+                    drop_subpop.append(subpop1)
+
+        self.p_clon = np.delete(self.p_clon, drop_subpop, axis=1)
+        self.f_clon = np.delete(self.f_clon, drop_subpop, axis=0)
+
+        # remove negative proportions
+        self.f_clon[self.f_clon < 0] = 0
+        return 0
+
+    # Add WT if not present and add up to 100%
+    # Should be called after collapse identical
+    def populate_wt(self):
+        wt_index = -1
+
+        for subpop in range(decompose.p_clon.shape[1]):
+            # Check if it is wild-type
+            if np.min(self.p_clon[:, subpop] == np.zeros((self.p_clon.shape[0], 1))):
+                wt_index = subpop
+
+        # sum up WT to 100%
+        if wt_index >=0:
+            self.f_clon[wt_index, :] += np.array(list(map(self.relu, 1 - np.sum(self.f_clon, axis=0))))
+        else:
+            self.p_clon = np.concatenate((self.p_clon, np.zeros((self.p_clon.shape[0], 1))), axis=1)
+            self.f_clon = np.concatenate((self.f_clon, np.zeros((1, self.f_clon.shape[1]))), axis=0)
+            self.f_clon[self.f_clon.shape[0] - 1, :] += np.array(list(map(self.relu, 1 - np.sum(self.f_clon, axis=0))))
+        return 0
 
 parser = argparse.ArgumentParser(description='''
    Performes observed variant frequency matrix decomposition
@@ -133,11 +169,11 @@ parser.add_argument('-e', '--epsilon', default=10**-3, help='Step for gradinet c
 parser.add_argument('-o', '--out_dir', default='output', help='Output directory. Default: output')
 args = parser.parse_args()
 
-#try:
-#    os.makedirs(args.out_dir)
-#except OSError:
-#    print(f'Can\'t create output directory {args.out_dir}')
-#    exit(1)
+try:
+    os.makedirs(args.out_dir)
+except OSError:
+    print(f'Can\'t create output directory {args.out_dir}')
+    exit(1)
 
 # read variant frequency table
 freq_var = pd.read_csv(args.var_table, sep='\t')
@@ -191,22 +227,17 @@ for i in range(args.iterations):
     print(f'Iteration: {i+1}: SE = {sq_error}, '
           f'Cost = {cost}')
 
-# Sum identical subpopulations
-drop_subpop = list()
+pd.DataFrame(decompose.p_clon).to_csv(os.path.join(args.out_dir, 'p_clon.tsv'), header=False, index=False, sep='\t')
+pd.DataFrame(decompose.f_clon).to_csv(os.path.join(args.out_dir, 'f_clon.tsv'), header=False, index=False, sep='\t')
+pd.DataFrame(decompose.p_clon.dot(decompose.f_clon)).to_csv(os.path.join(args.out_dir, 'reconstructed.tsv'), header=False, index=False, sep='\t')
 
-for subpop in range(decompose.p_clon.shape[1]):
-    for subpop1 in range(subpop + 1, decompose.p_clon.shape[1]):
-        if np.min(decompose.p_clon[:, subpop] == decompose.p_clon[:, subpop1]):
-            decompose.f_clon[subpop, :] += decompose.f_clon[subpop1, :]
-            decompose.f_clon[subpop1, :] = 0
-            drop_subpop.append(subpop1)
 
-decompose.p_clon = np.delete(decompose.p_clon, drop_subpop, axis=1)
-decompose.f_clon = np.delete(decompose.f_clon, drop_subpop, axis=0)
+decompose.collapse_identical()
+decompose.populate_wt()
 
 cost_history.plot(x="iteration", y=["SE", "Cost"])
 plt.savefig(os.path.join(args.out_dir, 'Cost.pdf'))
 cost_history.to_csv(os.path.join(args.out_dir, 'Cost.tsv'), sep='\t')
-pd.DataFrame(decompose.p_clon).to_csv(os.path.join(args.out_dir, 'p_clon.tsv'), header=False, index=False, sep='\t')
-pd.DataFrame(decompose.f_clon).to_csv(os.path.join(args.out_dir, 'f_clon.tsv'), header=False, index=False, sep='\t')
-pd.DataFrame(decompose.p_clon.dot(decompose.f_clon)).to_csv(os.path.join(args.out_dir, 'reconstructed.tsv'), header=False, index=False, sep='\t')
+pd.DataFrame(decompose.p_clon).to_csv(os.path.join(args.out_dir, 'p_clon_collapsed.tsv'), header=False, index=False, sep='\t')
+pd.DataFrame(decompose.f_clon).to_csv(os.path.join(args.out_dir, 'f_clon_collapsed.tsv'), header=False, index=False, sep='\t')
+pd.DataFrame(decompose.p_clon.dot(decompose.f_clon)).to_csv(os.path.join(args.out_dir, 'reconstructed_collapsed.tsv'), header=False, index=False, sep='\t')
