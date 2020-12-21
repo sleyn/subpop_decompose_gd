@@ -31,6 +31,8 @@ class ClonalDecomposition:
         self.alpha = alpha
         # Gradient calculation step
         self.epsilon = epsilon
+        # Probability of draw 1 in variant
+        self.var_prob = var_prob
 
     # Rectified linear unit (ReLu)
     @staticmethod
@@ -87,6 +89,10 @@ class ClonalDecomposition:
             else:
                 p_clon_new[x, y] = self.p_clon[x, y]
 
+        # If all elements will be 0 the algorithm will stuck. Better to reinitialize.
+        if np.sum(p_clon_new) == 0:
+            p_clon_new = self.p_clon_init(self.var_prob)
+
         return p_clon_new
 
     def f_clon_update(self):
@@ -110,17 +116,17 @@ class ClonalDecomposition:
 
     def collapse_identical(self):
         # Sum identical subpopulations
-        drop_subpop = list()
+        drop_subpop = set()
 
         for subpop in range(self.p_clon.shape[1]):
             for subpop1 in range(subpop + 1, self.p_clon.shape[1]):
                 if np.min(self.p_clon[:, subpop] == self.p_clon[:, subpop1]):
                     self.f_clon[subpop, :] += self.f_clon[subpop1, :]
                     self.f_clon[subpop1, :] = 0
-                    drop_subpop.append(subpop1)
+                    drop_subpop.add(subpop1)
 
-        self.p_clon = np.delete(self.p_clon, drop_subpop, axis=1)
-        self.f_clon = np.delete(self.f_clon, drop_subpop, axis=0)
+        self.p_clon = np.delete(self.p_clon, list(drop_subpop), axis=1)
+        self.f_clon = np.delete(self.f_clon, list(drop_subpop), axis=0)
 
         # remove negative proportions
         self.f_clon[self.f_clon < 0] = 0
@@ -137,7 +143,7 @@ class ClonalDecomposition:
                 wt_index = subpop
 
         # sum up WT to 100%
-        if wt_index >=0:
+        if wt_index >= 0:
             self.f_clon[wt_index, :] += np.array(list(map(self.relu, 1 - np.sum(self.f_clon, axis=0))))
         else:
             self.p_clon = np.concatenate((self.p_clon, np.zeros((self.p_clon.shape[0], 1))), axis=1)
@@ -145,99 +151,111 @@ class ClonalDecomposition:
             self.f_clon[self.f_clon.shape[0] - 1, :] += np.array(list(map(self.relu, 1 - np.sum(self.f_clon, axis=0))))
         return 0
 
-parser = argparse.ArgumentParser(description='''
-   Performes observed variant frequency matrix decomposition
-   into variant presence binary matrix and subpopulation frequency
-   matrix using gradient descend algorithm.
-''')
 
-parser.add_argument('-t', '--var_table', help='Variant table. Columns: Chrom, Pos, Ref, Alt and sample columns')
-parser.add_argument('-p', '--perc2prop', action='store_true', help='If frequencies are in percents bring them '
-                                                                   'to proportions. Default: False')
-parser.add_argument('--lambda_sumclon', default=4.0, help='Regularization parameter for controlling that sum of '
-                                                        'clonal frequencies not greater than 100%. Default: 2.0')
-parser.add_argument('--lambda_maxfreq', default=4.0, help='Regularization for keeping frequencies in the [0 ,100]% '
-                                                          'interval. Default: 2.0')
-parser.add_argument('-v', '--var_prob', default=0.1, help='Probability to draw 1 (presence of variant in sub-population)'
-                                                          ' at the initialization process. Default: 0.1')
-parser.add_argument('--dirichlet_papam', default=0.1, help='Parameter for Dirichlet distribution. Default: 0.1')
-parser.add_argument('-i', '--iterations', default=500, help='Number of iterations for gradient descend. Default: 50')
-parser.add_argument('-s', '--n_subpop', default=0, help='Estimated number of sub-populations.'
-                                                        'Default: 2x of observed variants.')
-parser.add_argument('-a', '--alpha', default=0.005, help='Learning rate. Default: 0.02')
-parser.add_argument('-e', '--epsilon', default=10**-3, help='Step for gradinet calculation. Default: 10^-4')
-parser.add_argument('-o', '--out_dir', default='output', help='Output directory. Default: output')
-args = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='''
+       Performs observed variant frequency matrix decomposition
+       into variant presence binary matrix and subpopulation frequency
+       matrix using gradient descend algorithm.
+    ''')
 
-try:
-    os.makedirs(args.out_dir)
-except OSError:
-    print(f'Can\'t create output directory {args.out_dir}')
-    exit(1)
+    parser.add_argument('-t', '--var_table', help='Variant table. Columns: Chrom, Pos, Ref, Alt and sample columns')
+    parser.add_argument('-p', '--perc2prop', action='store_true', help='If frequencies are in percents bring them '
+                                                                       'to proportions. Default: False')
+    parser.add_argument('--lambda_sumclon', default=4, help='Regularization parameter for controlling that sum of '
+                                                            'clonal frequencies not greater than 100. Default: 4')
+    parser.add_argument('--lambda_maxfreq', default=4, help='Regularization for keeping frequencies in the [0 ,100]'
+                                                              'interval. Default: 4')
+    parser.add_argument('-v', '--var_prob', default=0.1, help='Probability to draw 1 (presence of variant in sub-population)'
+                                                              ' at the initialization process. Default: 0.1')
+    parser.add_argument('--dirichlet_papam', default=0.1, help='Parameter for Dirichlet distribution. Default: 0.1')
+    parser.add_argument('-i', '--iterations', default=500, help='Number of iterations for gradient descend. Default: 500')
+    parser.add_argument('-s', '--n_subpop', default=0, help='Estimated number of sub-populations.'
+                                                            'Default: 2x of observed variants.')
+    parser.add_argument('-a', '--alpha', default=0.005, help='Learning rate. Default: 0.005')
+    parser.add_argument('-e', '--epsilon', default=10**-3, help='Step for gradinet calculation. Default: 10^-3')
+    parser.add_argument('-o', '--out_dir', default='output', help='Output directory. Default: output')
+    args = parser.parse_args()
 
-# read variant frequency table
-freq_var = pd.read_csv(args.var_table, sep='\t')
-freq_var_columns = freq_var.columns.to_list()
-sample_columns = [column for column in freq_var_columns if column not in ['Chrom', 'Pos', 'Ref', 'Alt']]
+    try:
+        os.makedirs(args.out_dir)
+    except OSError:
+        print(f'Can\'t create output directory {args.out_dir}')
+        exit(1)
 
-# Convert percentages to proportions if perc2prop flag is set
-if args.perc2prop:
-    freq_var[sample_columns] = freq_var[sample_columns] / 100
+    # read variant frequency table
+    freq_var = pd.read_csv(args.var_table, sep='\t')
+    freq_var_columns = freq_var.columns.to_list()
+    sample_columns = [column for column in freq_var_columns if column not in ['Chrom', 'Pos', 'Ref', 'Alt']]
 
-freq_var_matrix = freq_var[sample_columns].to_numpy()
+    # Convert percentages to proportions if perc2prop flag is set
+    if args.perc2prop:
+        freq_var[sample_columns] = freq_var[sample_columns] / 100
 
-n_subpop = args.n_subpop
-if not n_subpop:
-    n_subpop = 2 * freq_var_matrix.shape[1]
+    freq_var_matrix = freq_var[sample_columns].to_numpy()
 
-# Set ClonalDecomposition object
-decompose = ClonalDecomposition(
-    f_var=freq_var_matrix,
-    n_subpop=n_subpop,
-    lambda_sumclon=args.lambda_sumclon,
-    lambda_maxfreq=args.lambda_maxfreq,
-    var_prob=args.var_prob,
-    dirichlet_papam=args.dirichlet_papam,
-    alpha=args.alpha,
-    epsilon=args.epsilon
-)
+    n_subpop = args.n_subpop
+    if not n_subpop:
+        n_subpop = 2 * freq_var_matrix.shape[1]
 
-# Start gradient descend
-print('Start gradient descend')
+    # Set ClonalDecomposition object
+    decompose = ClonalDecomposition(
+        f_var=freq_var_matrix,
+        n_subpop=n_subpop,
+        lambda_sumclon=args.lambda_sumclon,
+        lambda_maxfreq=args.lambda_maxfreq,
+        var_prob=args.var_prob,
+        dirichlet_papam=args.dirichlet_papam,
+        alpha=args.alpha,
+        epsilon=args.epsilon
+    )
 
-# Cost history
-cost_history = pd.DataFrame({
-    'iteration': [i for i in range(args.iterations + 1)],
-    'SE': np.zeros(args.iterations + 1),
-    'Cost': np.zeros(args.iterations + 1)
-})
+    # Start gradient descend
+    print('Start gradient descend')
 
-sq_error, cost = decompose.cost(decompose.p_clon, decompose.f_clon)
-cost_history.loc[0, 'SE'] = sq_error
-cost_history.loc[0, 'Cost'] = cost
+    # Cost history
+    cost_history = pd.DataFrame({
+        'iteration': [i for i in range(args.iterations + 1)],
+        'SE': np.zeros(args.iterations + 1),
+        'Cost': np.zeros(args.iterations + 1),
+        'Presence_change': np.zeros(args.iterations + 1),
+        'Subpop_change': np.zeros(args.iterations + 1)
+    })
 
-for i in range(args.iterations):
-    p_clon_temp = decompose.p_clon_update()
-    f_clon_temp = decompose.f_clon_update()
-    decompose.p_clon = p_clon_temp
-    decompose.f_clon = f_clon_temp
     sq_error, cost = decompose.cost(decompose.p_clon, decompose.f_clon)
-    cost_history.loc[i+1, 'SE'] = sq_error
-    cost_history.loc[i+1, 'Cost'] = cost
-    print(f'Iteration: {i+1}: SE = {sq_error}, '
-          f'Cost = {cost}')
+    cost_history.loc[0, 'SE'] = sq_error
+    cost_history.loc[0, 'Cost'] = cost
 
-pd.DataFrame(decompose.p_clon).to_csv(os.path.join(args.out_dir, 'p_clon.tsv'), header=False, index=False, sep='\t')
-pd.DataFrame(decompose.f_clon).to_csv(os.path.join(args.out_dir, 'f_clon.tsv'), header=False, index=False, sep='\t')
-pd.DataFrame(decompose.p_clon.dot(decompose.f_clon)).to_csv(os.path.join(args.out_dir, 'reconstructed.tsv'), header=False, index=False, sep='\t')
+    for i in range(args.iterations):
+        p_clon_temp = decompose.p_clon_update()
+        f_clon_temp = decompose.f_clon_update()
+        cost_history.loc[i + 1, 'Presence_change'] = np.sum(np.power(decompose.p_clon - p_clon_temp, 2))
+        cost_history.loc[i + 1, 'Subpop_change'] = np.sum(np.power(decompose.f_clon - f_clon_temp, 2))
+        decompose.p_clon = p_clon_temp
+        decompose.f_clon = f_clon_temp
+        sq_error, cost = decompose.cost(decompose.p_clon, decompose.f_clon)
+        cost_history.loc[i+1, 'SE'] = sq_error
+        cost_history.loc[i+1, 'Cost'] = cost
+        print(f'Iteration: {i+1}: SE = {sq_error}, '
+              f'Cost = {cost}')
+
+    pd.DataFrame(decompose.p_clon).to_csv(os.path.join(args.out_dir, 'presence_sub.tsv'), header=False, index=False, sep='\t')
+    pd.DataFrame(decompose.f_clon).to_csv(os.path.join(args.out_dir, 'freq_sub.tsv'), header=False, index=False, sep='\t')
+    pd.DataFrame(decompose.p_clon.dot(decompose.f_clon)).to_csv(os.path.join(args.out_dir, 'reconstructed.tsv'), header=False, index=False, sep='\t')
 
 
-decompose.collapse_identical()
-decompose.populate_wt()
+    decompose.collapse_identical()
+    decompose.populate_wt()
 
-cost_history.plot(x="iteration", y=["SE", "Cost"])
-plt.savefig(os.path.join(args.out_dir, 'Cost.pdf'))
-cost_history.to_csv(os.path.join(args.out_dir, 'Cost.tsv'), sep='\t')
-pd.DataFrame(decompose.p_clon).to_csv(os.path.join(args.out_dir, 'p_clon_collapsed.tsv'), header=False, index=False, sep='\t')
-pd.DataFrame(decompose.f_clon).to_csv(os.path.join(args.out_dir, 'f_clon_collapsed.tsv'), header=False, index=False, sep='\t')
-pd.DataFrame(decompose.p_clon.dot(decompose.f_clon)).to_csv(os.path.join(args.out_dir, 'reconstructed_collapsed.tsv'), header=False, index=False, sep='\t')
+    # Plots
+    cost_history.plot(x='iteration', y=['SE', 'Cost'])
+    plt.savefig(os.path.join(args.out_dir, 'Cost.pdf'))
+    cost_history.plot(x="iteration", y='Presence_change')
+    plt.savefig(os.path.join(args.out_dir, 'Presence_change.pdf'))
+    cost_history.plot(x='iteration', y='Subpop_change')
+    plt.savefig(os.path.join(args.out_dir, 'Subpop_change.pdf'))
+
+    cost_history.to_csv(os.path.join(args.out_dir, 'Cost.tsv'), sep='\t', index=False)
+    pd.DataFrame(decompose.p_clon).to_csv(os.path.join(args.out_dir, 'presence_sub_collapsed.tsv'), header=False, index=False, sep='\t')
+    pd.DataFrame(decompose.f_clon).to_csv(os.path.join(args.out_dir, 'freq_sub_collapsed.tsv'), header=False, index=False, sep='\t')
+    pd.DataFrame(decompose.p_clon.dot(decompose.f_clon)).to_csv(os.path.join(args.out_dir, 'reconstructed_collapsed.tsv'), header=False, index=False, sep='\t')
