@@ -13,7 +13,7 @@ def p_clon_init(prob, n_variants, n_subpop):
     print('Initialize Presence of variants matrix')
     test_prob = np.random.choice([0, 1], (n_variants, n_subpop), p=[1 - prob, prob])
     # If there is WT - add variant to it
-    test_prob[np.random.randint(n_variants), np.sum(test_prob, axis=0) > 0] = 1
+    test_prob[np.random.randint(n_variants), np.sum(test_prob, axis=0) == 0] = 1
     return test_prob
 
 
@@ -26,7 +26,19 @@ def f_clon_init(dirichlet_papam, n_subpop, n_samples):
     return f_clon
 
 
-number_of_tests = 50
+def collapse_identical(p_clon):
+    # Sum identical subpopulations
+    drop_subpop = set()
+
+    for subpop in range(p_clon.shape[1]):
+        for subpop1 in range(subpop + 1, p_clon.shape[1]):
+            if np.min(p_clon[:, subpop] == p_clon[:, subpop1]):
+                drop_subpop.add(subpop1)
+
+    p_clon = np.delete(p_clon, list(drop_subpop), axis=1)
+    return p_clon
+
+number_of_tests = 100
 results_df = pd.DataFrame({
     'N': np.arange(0, number_of_tests, 1),     # Number of the test
     'Variants': np.zeros(number_of_tests),
@@ -48,6 +60,8 @@ for i in range(number_of_tests):
     n_samples = np.random.randint(1, 10, 1)[0]
     n_subpop = n_samples * 2
     test_p_clon = p_clon_init(0.1, n_variants, n_subpop)
+    test_p_clon = collapse_identical(test_p_clon)
+    n_subpop = test_p_clon.shape[1]
     test_f_clon = f_clon_init(0.1, n_subpop, n_samples)
     test_f_var = np.dot(test_p_clon, test_f_clon)
     test_f_var_df = pd.DataFrame(test_f_var)

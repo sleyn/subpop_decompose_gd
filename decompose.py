@@ -159,22 +159,33 @@ if __name__ == "__main__":
        matrix using gradient descend algorithm.
     ''')
 
-    parser.add_argument('-t', '--var_table', help='Variant table. Columns: Chrom, Pos, Ref, Alt and sample columns')
-    parser.add_argument('-p', '--perc2prop', action='store_true', help='If frequencies are in percents bring them '
-                                                                       'to proportions. Default: False')
-    parser.add_argument('--lambda_sumclon', default=4, help='Regularization parameter for controlling that sum of '
-                                                            'clonal frequencies not greater than 100. Default: 4')
-    parser.add_argument('--lambda_maxfreq', default=4, help='Regularization for keeping frequencies in the [0 ,100]'
-                                                              'interval. Default: 4')
-    parser.add_argument('-v', '--var_prob', default=0.1, help='Probability to draw 1 (presence of variant in sub-population)'
-                                                              ' at the initialization process. Default: 0.1')
-    parser.add_argument('--dirichlet_papam', default=0.1, help='Parameter for Dirichlet distribution. Default: 0.1')
-    parser.add_argument('-i', '--iterations', default=500, help='Number of iterations for gradient descend. Default: 500')
-    parser.add_argument('-s', '--n_subpop', default=0, help='Estimated number of sub-populations.'
-                                                            'Default: 2x of observed variants.')
-    parser.add_argument('-a', '--alpha', default=0.005, help='Learning rate. Default: 0.005')
-    parser.add_argument('-e', '--epsilon', default=10**-3, help='Step for gradinet calculation. Default: 10^-3')
-    parser.add_argument('-o', '--out_dir', default='output', help='Output directory. Default: output')
+    parser.add_argument('-t', '--var_table', type=str,
+                        help='Variant table. Columns: Chrom, Pos, Ref, Alt and sample columns')
+    parser.add_argument('-p', '--perc2prop', action='store_true',
+                        help='If frequencies are in percents bring them '
+                             'to proportions. Default: False')
+    parser.add_argument('--lambda_sumclon', type=float, default=4,
+                        help='Regularization parameter for controlling that sum of '
+                             'clonal frequencies not greater than 100. Default: 4')
+    parser.add_argument('--lambda_maxfreq', type=float, default=4,
+                        help='Regularization for keeping frequencies in the [0 ,100]'
+                             'interval. Default: 4')
+    parser.add_argument('-v', '--var_prob', type=float, default=0.1,
+                        help='Probability to draw 1 (presence of variant in sub-population)'
+                             ' at the initialization process. Default: 0.1')
+    parser.add_argument('--dirichlet_papam', type=float, default=0.1,
+                        help='Parameter for Dirichlet distribution. Default: 0.1')
+    parser.add_argument('-i', '--iterations', type=int, default=500,
+                        help='Number of iterations for gradient descend. Default: 500')
+    parser.add_argument('-s', '--n_subpop', type=int, default=0,
+                        help='Estimated number of sub-populations.'
+                             'Default: 2x of observed variants.')
+    parser.add_argument('-a', '--alpha', type=float, default=0.005,
+                        help='Learning rate. Default: 0.005')
+    parser.add_argument('-e', '--epsilon', type=float, default=10**-3,
+                        help='Step for gradinet calculation. Default: 10^-3')
+    parser.add_argument('-o', '--out_dir', type=str, default='output',
+                        help='Output directory. Default: output')
     args = parser.parse_args()
 
     try:

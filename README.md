@@ -141,3 +141,34 @@ The output directory contains the following files:
 - freq_sub_collapsed.tsv - Resulted **S** matrix *__after__* collapsing identical subpopulations.
 - presence_sub_collapsed.tsv - Resulted **P** matrix *__after__* collapsing identical subpopulations.
 - reconstructed_collapsed.tsv - Resulted reconstructed **O'** matrix *__after__* collapsing identical subpopulations. **O'** = **P** * **S**.
+
+## Testing
+
+The testing was made by creating 100 random **P** and **S** matrix pairs. The parameters of matrix building:
+ - N<sub>variants</sub> = [2:100]
+ - N<sub>samples</sub> = [1:10]
+ - N<sub>subpopulations</sub> = 2 * N<sub>samples</sub>
+ - No WT (all 0) subpopulations in matrix **P**
+ - Sum of frequencies for each subpopulation in matrix **S** is 1.
+
+The testing was made by using default parameters.
+
+Some results:
+
+<img src="img/Size_effect.png">
+
+*Execution time, F1 score, Square root of Mean Sequare Error, Precision of identifying subpopulations and Recall of identifying subpopulations by size of O-matrix (N<sub>variants</sub> * N<sub>samples</sub>).*
+
+Algorithm did not converged in 13 out of 100 runs. Manual inspection showed that decreasing learning rate and increasing number of iterations are the main approaches to make algorithm work on these samples.
+
+1. Visually execution time dependency on the **O** matrix size is pretty well approximates by linear model.
+2. F1 score, Precision and Recall decrease with size as expected. However it seems that both Precision and Recall stabilize around 30% on high sizes. From the biological perspective it would be not a bad situation if algorithm is correct for the major subpopulation and have some errors in minor subpopulations. Also here True Positive was defined as 100% match in presence/absence for all variants. It was not inspected how well "incorrect" subpopulation resemble correct ones.
+3. The square root of MSE should show avarage difference between reconstructed variant matrix (**O'**) and initial (**O**). It has stable trend around 10%.
+
+However some tests in our lab showed that algorithm predict a lot of observed isolates genotypes from our evolutionary experiments.
+
+## Notes
+
+1. The algorithm definitely has multiple local attraction points even with constrains. It was observed that for some matrices the solution is stable, for others - it is not.
+2. Likely you should play with parameters. Primary with learning rate and number of iterations.
+3. Probably there could be better optimization algorithm for this task. The main concern that gradient descend primary should work with the continuous function, not the rugged one here. We have a partially continuous function as we multiply discrete matrix on continuous. If someone has better solution - **please share**.
