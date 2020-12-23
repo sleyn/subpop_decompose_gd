@@ -5,7 +5,7 @@ library(tidyverse)
 library(viridis)
 library(ggrepel)
 
-tests = read_tsv('Test/Test/Test_results.tsv')
+tests = read_tsv('./test_results/Test_results.tsv')
 tests = tests %>% mutate(Size = Variants * Samples)
 
 tests_long = tests %>% 
@@ -21,7 +21,7 @@ plot_1 = tests_long %>%
   facet_grid(Test ~ ., scales = "free_y") +
   theme_bw()
 
-ggsave('Size_effect.png', height = 8, width = 6)
+ggsave('./img/Size_effect.png', height = 8, width = 6)
 
 plot_2 = tests %>% ggplot(aes(Variants, Samples, color=F1_score, label=F1_score)) + 
   geom_point(size = 4, alpha = 0.5) +
@@ -32,7 +32,7 @@ plot_2 = tests %>% ggplot(aes(Variants, Samples, color=F1_score, label=F1_score)
   ylab('Number of samples') +
   theme_bw()
 
-ggsave('F1_Size.png', height = 6, width = 6)
+ggsave('./img/F1_Size.png', height = 6, width = 6)
 
 plot_3 = tests %>% filter(MSE_SQRT <= 1) %>% ggplot(aes(F1_score, MSE_SQRT)) +
   geom_density2d_filled() +
@@ -41,4 +41,4 @@ plot_3 = tests %>% filter(MSE_SQRT <= 1) %>% ggplot(aes(F1_score, MSE_SQRT)) +
   xlab('F1 Score') +
   ylab('Square root of MSE')
 
-ggsave('F1_MSE.png', height = 6, width = 6)
+ggsave('./img/F1_MSE.png', height = 6, width = 6)
