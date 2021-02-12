@@ -40,7 +40,12 @@ Or generalized:
 
 <img src="img/dot_general.png">
 
-Where **P** - binary matrix where elements could be 0 or 1. **S** and **O** matrices elements could be any real number, but should be in the biologically meaningful interval [0; 1] (from 0% to 100%). The additional constrains are:
+Where: <br>
+**P** - binary matrix where elements could be 0 or 1. Represent presence (element value p<sub>i,j</sub> = 1) of variant *i* in subpopulation *j*<br>
+**S** - matrix where element s<sub>i,j</sub> represent frequency of subpopulation *i* in sample *j*.<br>
+**O** - matrix of observed variant frequences. Element o<sub>i,j</sub> represent frequency of variant *i* in sample *j*.
+
+Elements of matrixes **S** and **O** could be any real number, but should be in the biologically meaningful interval [0; 1] (from 0% to 100%). The additional constrains are:
 
 1. The sum of subpopulation sequencies in any sample should be in the interval [0, 1].
 2. Each frequency of subpopulation should be in the interval [0, 1]
@@ -51,7 +56,7 @@ Therefore it would be good to have estimates of matrices **P** and **S**. To pro
 The key element is the cost function:
 
 <img src="img/cost.png">
-where *lambda1* and *lambda2* are regularization constants, *RELU* is *max(0, x)* function.
+where *lambda1* and *lambda2* are regularization constants, *RELU* is *max(0, x)* function, s<sub>i,j</sub> is frequency of subpopulation *i* in a sample *j*.
 
 ### The algorithm:
 1. Estimate number of subpopulations. This number will be used to initialize **P** and **S** matrices.
@@ -59,10 +64,10 @@ where *lambda1* and *lambda2* are regularization constants, *RELU* is *max(0, x)
 3. Initialize **S** matrix. For initialization the Dirichlet distribution is used for each subpopulation row so the sum of frequencies will be 1 for each subpopulation from the beginning.
 4. Calculate current cost.
 5. For each element of matrix **P** flip switch between 0 and 1 one by one and calculate cost. If the cost is less than the current cost then remember this number.
-6. For each element *x<sub>i,j</sub>* of matrix **S** calculate  partial derivative of cost function using formula:<br>
+6. For each element *s<sub>i,j</sub>* (frequency of subpopulation *i* in sample *j*) of matrix **S** calculate  partial derivative of cost function using formula:<br>
 <img src="img/derivative.png" width=300><br>
 where epsilon is small number (10^-3 by default).
-Matrix **S** then updated using *P = P - alpha * grad(J)*, where alpha is learning rate.
+Matrix **S** then updated using *S = S - alpha * grad(J)*, where alpha is learning rate.
 7. Repeat 4-6 for predefined number of iterations.
 8. Sum subpopulations in matrix **S** with identical [0/1] profiles in the matrix **P**.
 9. Set negative elements in the matrix **P** to **0** (usually small negative numbers are present).
