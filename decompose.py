@@ -176,11 +176,11 @@ if __name__ == "__main__":
     parser.add_argument('--dirichlet_papam', type=float, default=0.1,
                         help='Parameter for Dirichlet distribution. Default: 0.1')
     parser.add_argument('-i', '--iterations', type=int, default=200,
-                        help='Number of iterations for gradient descend. Default: 500')
+                        help='Number of iterations for gradient descend. Default: 200')
     parser.add_argument('-s', '--n_subpop', type=int, default=0,
                         help='Estimated number of sub-populations.'
                              'Default: 2x of observed variants.')
-    parser.add_argument('-a', '--alpha', type=float, default=0.01,
+    parser.add_argument('-a', '--alpha', type=float, default=0.005,
                         help='Initial learning rate. Default: 0.1')
     parser.add_argument('-e', '--epsilon', type=float, default=10**-3,
                         help='Step for gradinet calculation. Default: 10^-3')
