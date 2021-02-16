@@ -95,7 +95,7 @@ class ClonalDecomposition:
 
         return p_clon_new
 
-    def f_clon_update(self):
+    def f_clon_update(self, iteration):
         # gradient
         f_clon_grad = np.zeros(self.f_clon.shape)
 
@@ -111,7 +111,7 @@ class ClonalDecomposition:
 
             f_clon_grad[x, y] = (cost_p - cost_m) / (2 * self.epsilon)
 
-        f_clon_new = self.f_clon - self.alpha * f_clon_grad
+        f_clon_new = self.f_clon - self.alpha / np.sqrt(iteration) * f_clon_grad
         return f_clon_new
 
     def collapse_identical(self):
@@ -175,13 +175,13 @@ if __name__ == "__main__":
                              ' at the initialization process. Default: 0.1')
     parser.add_argument('--dirichlet_papam', type=float, default=0.1,
                         help='Parameter for Dirichlet distribution. Default: 0.1')
-    parser.add_argument('-i', '--iterations', type=int, default=500,
+    parser.add_argument('-i', '--iterations', type=int, default=200,
                         help='Number of iterations for gradient descend. Default: 500')
     parser.add_argument('-s', '--n_subpop', type=int, default=0,
                         help='Estimated number of sub-populations.'
                              'Default: 2x of observed variants.')
-    parser.add_argument('-a', '--alpha', type=float, default=0.005,
-                        help='Learning rate. Default: 0.005')
+    parser.add_argument('-a', '--alpha', type=float, default=0.01,
+                        help='Initial learning rate. Default: 0.1')
     parser.add_argument('-e', '--epsilon', type=float, default=10**-3,
                         help='Step for gradinet calculation. Default: 10^-3')
     parser.add_argument('-o', '--out_dir', type=str, default='output',
@@ -239,7 +239,7 @@ if __name__ == "__main__":
 
     for i in range(args.iterations):
         p_clon_temp = decompose.p_clon_update()
-        f_clon_temp = decompose.f_clon_update()
+        f_clon_temp = decompose.f_clon_update(i+1)
         cost_history.loc[i + 1, 'Presence_change'] = np.sum(np.power(decompose.p_clon - p_clon_temp, 2))
         cost_history.loc[i + 1, 'Subpop_change'] = np.sum(np.power(decompose.f_clon - f_clon_temp, 2))
         decompose.p_clon = p_clon_temp

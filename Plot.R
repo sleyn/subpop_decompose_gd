@@ -5,8 +5,11 @@ library(tidyverse)
 library(viridis)
 library(ggrepel)
 
-tests = read_tsv('./test_results/Test_results.tsv')
+tests = read_tsv('./test_results/Test_results_decreased_lr.tsv')
 tests = tests %>% mutate(Size = Variants * Samples)
+
+tests1 = read_tsv('./test_results/Test_results_fixed_lr.tsv')
+tests1 = tests %>% mutate(Size = Variants * Samples)
 
 tests_long = tests %>% 
   filter(MSE_SQRT <= 1) %>%
@@ -21,7 +24,7 @@ plot_1 = tests_long %>%
   facet_grid(Test ~ ., scales = "free_y") +
   theme_bw()
 
-ggsave('./img/Size_effect.png', height = 8, width = 6)
+ggsave('./img/Size_effect_dlr.png', height = 8, width = 6)
 
 plot_2 = tests %>% ggplot(aes(Variants, Samples, color=F1_score, label=F1_score)) + 
   geom_point(size = 4, alpha = 0.5) +
@@ -42,3 +45,30 @@ plot_3 = tests %>% filter(MSE_SQRT <= 1) %>% ggplot(aes(F1_score, MSE_SQRT)) +
   ylab('Square root of MSE')
 
 ggsave('./img/F1_MSE.png', height = 6, width = 6)
+
+tests_long_2 = tests %>% 
+  filter(MSE_SQRT <= 1) %>%
+  select(Variants, Samples, Subpopulations, Precision, Recall, F1_score, MSE_SQRT) %>%
+  pivot_longer(-c(Variants, Samples, Subpopulations),names_to='Score', values_to='Value') %>%
+  pivot_longer(-c(Score, Value), names_to='Dimention', values_to='Size')
+tests_long_2$LR = 'Decreasing learning rate'
+
+tests_long_1 = tests1 %>% 
+  filter(MSE_SQRT <= 1) %>%
+  select(Variants, Samples, Subpopulations, Precision, Recall, F1_score, MSE_SQRT) %>%
+  pivot_longer(-c(Variants, Samples, Subpopulations),names_to='Score', values_to='Value') %>%
+  pivot_longer(-c(Score, Value), names_to='Dimention', values_to='Size')
+tests_long_1$LR = 'Constant Learning rate'
+
+tests_long = rbind(tests_long_1, tests_long_2)
+
+plot_4 = tests_long_2 %>% ggplot(aes(Size, Value)) +
+  geom_point(alpha=0.3) +
+  geom_smooth(color = "blue") +
+  facet_grid(Score ~ Dimention, scales = 'free')
+
+ggsave('./img/Score_vs_size_dlr.png', height = 6, width = 6)
+
+plot_5 = tests %>% ggplot(aes(Variants, Subpopulations)) + 
+  geom_point(alpha = 0.3) +
+  geom_abline(slope = 2)

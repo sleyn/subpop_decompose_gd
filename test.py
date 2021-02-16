@@ -5,7 +5,7 @@ from collections import defaultdict
 import time
 
 # set tests
-test_dir = os.path.join('Test', 'Test')
+test_dir = os.path.join('Test', 'Test_adaptive_lr')
 os.mkdir(test_dir)
 
 
