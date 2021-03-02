@@ -5,11 +5,11 @@ library(tidyverse)
 library(viridis)
 library(ggrepel)
 
-tests = read_tsv('./test_results/Test_results_decreased_lr.tsv')
+tests = read_tsv('./test_results/Test_results_dlr2.tsv')
 tests = tests %>% mutate(Size = Variants * Samples)
 
 tests1 = read_tsv('./test_results/Test_results_fixed_lr.tsv')
-tests1 = tests %>% mutate(Size = Variants * Samples)
+tests1 = tests1 %>% mutate(Size = Variants * Samples)
 
 tests_long = tests %>% 
   filter(MSE_SQRT <= 1) %>%
@@ -62,12 +62,13 @@ tests_long_1$LR = 'Constant Learning rate'
 
 tests_long = rbind(tests_long_1, tests_long_2)
 
-plot_4 = tests_long_2 %>% ggplot(aes(Size, Value)) +
+plot_4 = tests_long %>% ggplot(aes(Size, Value, color = LR)) +
   geom_point(alpha=0.3) +
-  geom_smooth(color = "blue") +
-  facet_grid(Score ~ Dimention, scales = 'free')
+  geom_smooth(alpha = 0.1) +
+  facet_grid(Score ~ Dimention, scales = 'free') +
+  ggtitle('Constant rate = 0.005\nDecreasing rate starts 0.005')
 
-ggsave('./img/Score_vs_size_dlr.png', height = 6, width = 6)
+ggsave('./img/Score_vs_size_dr005.png', height = 6, width = 6)
 
 plot_5 = tests %>% ggplot(aes(Variants, Subpopulations)) + 
   geom_point(alpha = 0.3) +

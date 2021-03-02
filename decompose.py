@@ -42,7 +42,7 @@ class ClonalDecomposition:
     # Cost function
     def cost(self, p_clon, f_clon):
         # Square error
-        se = np.sum(np.power(p_clon.dot(f_clon) - self.f_var, 2))
+        loss = np.sum(np.power(p_clon.dot(f_clon) - self.f_var, 2))
 
         # Regularization for sum of clonal frequencies should not extend 100%
         reg_sumclon = self.lambda_sumclon * np.sum(
@@ -58,7 +58,30 @@ class ClonalDecomposition:
 
         # Regularization that frequency can't be greater 100%
         reg_fclon_constr = self.lambda_maxfreq * (np.sum(f_clon[f_clon > 1]) ** 2 + np.sum(f_clon[f_clon < 0]) ** 2)
-        return se, se + reg_sumclon + reg_fclon_constr
+        return loss, loss + reg_sumclon + reg_fclon_constr
+
+    # Huber loss function
+    def cost_huber(self, p_clon, f_clon, delta):
+        # Square error
+        error = p_clon.dot(f_clon) - self.f_var
+        loss = np.where(np.abs(error) < delta, 0.5 * (error ** 2),
+                        delta * np.abs(error) - 0.5 * (delta ** 2))
+
+        # Regularization for sum of clonal frequencies should not extend 100%
+        reg_sumclon = self.lambda_sumclon * np.sum(
+            np.array(
+                list(
+                    map(
+                        self.relu,
+                        np.sum(f_clon, axis=0) - 1
+                    )
+                )
+            )
+        )
+
+        # Regularization that frequency can't be greater 100%
+        reg_fclon_constr = self.lambda_maxfreq * (np.sum(f_clon[f_clon > 1]) ** 2 + np.sum(f_clon[f_clon < 0]) ** 2)
+        return loss, loss + reg_sumclon + reg_fclon_constr
 
     # Initialize P_clon matrix
     def p_clon_init(self, prob):
@@ -95,7 +118,7 @@ class ClonalDecomposition:
 
         return p_clon_new
 
-    def f_clon_update(self, iteration):
+    def f_clon_update(self):
         # gradient
         f_clon_grad = np.zeros(self.f_clon.shape)
 
@@ -111,7 +134,7 @@ class ClonalDecomposition:
 
             f_clon_grad[x, y] = (cost_p - cost_m) / (2 * self.epsilon)
 
-        f_clon_new = self.f_clon - self.alpha / np.sqrt(iteration) * f_clon_grad
+        f_clon_new = self.f_clon - self.alpha # / np.sqrt(iteration) * f_clon_grad
         return f_clon_new
 
     def collapse_identical(self):
@@ -233,18 +256,18 @@ if __name__ == "__main__":
         'Subpop_change': np.zeros(args.iterations + 1)
     })
 
-    sq_error, cost = decompose.cost(decompose.p_clon, decompose.f_clon)
+    sq_error, cost = decompose.cost_huber(decompose.p_clon, decompose.f_clon, 0.2)
     cost_history.loc[0, 'SE'] = sq_error
     cost_history.loc[0, 'Cost'] = cost
 
     for i in range(args.iterations):
         p_clon_temp = decompose.p_clon_update()
-        f_clon_temp = decompose.f_clon_update(i+1)
+        f_clon_temp = decompose.f_clon_update()
         cost_history.loc[i + 1, 'Presence_change'] = np.sum(np.power(decompose.p_clon - p_clon_temp, 2))
         cost_history.loc[i + 1, 'Subpop_change'] = np.sum(np.power(decompose.f_clon - f_clon_temp, 2))
         decompose.p_clon = p_clon_temp
         decompose.f_clon = f_clon_temp
-        sq_error, cost = decompose.cost(decompose.p_clon, decompose.f_clon)
+        sq_error, cost = decompose.cost_huber(decompose.p_clon, decompose.f_clon, 0.2)
         cost_history.loc[i+1, 'SE'] = sq_error
         cost_history.loc[i+1, 'Cost'] = cost
         print(f'Iteration: {i+1}: SE = {sq_error}, '
