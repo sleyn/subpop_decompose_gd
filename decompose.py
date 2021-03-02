@@ -64,8 +64,8 @@ class ClonalDecomposition:
     def cost_huber(self, p_clon, f_clon, delta):
         # Square error
         error = p_clon.dot(f_clon) - self.f_var
-        loss = np.where(np.abs(error) < delta, 0.5 * (error ** 2),
-                        delta * np.abs(error) - 0.5 * (delta ** 2))
+        loss = np.sum(np.where(np.abs(error) < delta, 0.5 * (error ** 2),
+                        delta * np.abs(error) - 0.5 * (delta ** 2)))
 
         # Regularization for sum of clonal frequencies should not extend 100%
         reg_sumclon = self.lambda_sumclon * np.sum(

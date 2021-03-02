@@ -5,7 +5,7 @@ from collections import defaultdict
 import time
 
 # set tests
-test_dir = os.path.join('Test', 'Test_adaptive_lr')
+test_dir = os.path.join('Test', 'Test_huber')
 os.mkdir(test_dir)
 
 
@@ -38,7 +38,7 @@ def collapse_identical(p_clon):
     p_clon = np.delete(p_clon, list(drop_subpop), axis=1)
     return p_clon
 
-number_of_tests = 100
+number_of_tests = 30
 results_df = pd.DataFrame({
     'N': np.arange(0, number_of_tests, 1),     # Number of the test
     'Variants': np.zeros(number_of_tests),
