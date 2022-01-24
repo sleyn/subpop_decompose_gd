@@ -1,5 +1,7 @@
 # Subpopulation decomposition
 
+**ATTENTION!** The more appropriate solution usine Mixed Integer Programming is in the ["subpop_decompose_mip" repository] (https://github.com/sleyn/subpop_decompose_mip).
+
 Decomposition of population deep-sequencing data into subpopulations using gradient descend algorithm.
 
 ## Motivation
